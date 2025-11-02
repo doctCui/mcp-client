@@ -2,8 +2,8 @@ package org.springframework.ai.mcp.samples.client;
 
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
-import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
- 
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
+import io.modelcontextprotocol.client.transport.customizer.McpSyncHttpClientRequestCustomizer;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -89,9 +89,9 @@ public class McpClientConfig {
         httpClientBuilder.connectTimeout(Duration.ofSeconds(5));
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
         requestBuilder.header("Authorization","Bearer secret123");
-        HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder("http://localhost:8080")
+        HttpClientStreamableHttpTransport transport = HttpClientStreamableHttpTransport.builder("http://localhost:8080")
                 .requestBuilder(requestBuilder)
-                .sseEndpoint("/weather/mcp/sse")
+                .endpoint("/mcp")
                 .clientBuilder(httpClientBuilder).build();
 
         McpSyncClient mcpSyncClient = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(10)).build();
@@ -99,6 +99,17 @@ public class McpClientConfig {
         return mcpSyncClient;
     }
 
+
+    @Bean
+    public McpSyncHttpClientRequestCustomizer correlationHeadersCustomizer() {
+        return (requestBuilder, httpMethod, uri, contentType, transportContext) -> {
+            String corrId = org.slf4j.MDC.get("corrId");
+            if (corrId == null || corrId.isBlank()) {
+                corrId = java.util.UUID.randomUUID().toString();
+            }
+            requestBuilder.header("X-Correlation-Id", corrId);
+        };
+    }
 
     @Bean
     public List<SyncMcpToolCallback> getSyncMcpToolCallback(McpSyncClient mcpSyncClient) {

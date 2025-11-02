@@ -12,11 +12,13 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 public class AgentController {
 
     private final ChatClient chatClient;
+    private final List<SyncMcpToolCallback> toolCallbacks;
 
   //  private final String systemPrompt;
 
@@ -33,10 +35,12 @@ public class AgentController {
     //     this.amapToolCallbacks = amapToolCallbacks;
     //     this.railwayToolCallbacks = railwayToolCallbacks;
     // }
-    public AgentController(ChatClient chatClient) {
-      this.chatClient = chatClient;
-      // this.systemPrompt = systemPrompt;
-  }
+    public AgentController(ChatClient chatClient,
+                           List<SyncMcpToolCallback> toolCallbacks) {
+        this.chatClient = chatClient;
+        this.toolCallbacks = toolCallbacks;
+        // this.systemPrompt = systemPrompt;
+    }
 
     @GetMapping(value = "/api")
     public String streamResponse(@RequestParam String username) {
@@ -59,11 +63,19 @@ public class AgentController {
         }
 
         return Mono.fromCallable(() -> {
-            String response = chatClient.prompt().system("这是一个聊天助手").user(message)
-                    .advisors(new SimpleLoggerAdvisor())
-                    .call()
-                    .content();
-            return Map.of("response", response);
+            String corrId = UUID.randomUUID().toString();
+            try (org.slf4j.MDC.MDCCloseable c = org.slf4j.MDC.putCloseable("corrId", corrId)) {
+                ToolCallback[] callbacks = toolCallbacks.toArray(new ToolCallback[0]);
+                String response = chatClient
+                        .prompt()
+                        .system("这是一个聊天助手")
+                        .user(message)
+                        .advisors(new SimpleLoggerAdvisor())
+                        .toolCallbacks(callbacks)
+                        .call()
+                        .content();
+                return Map.of("response", response, "correlationId", corrId);
+            }
         });
     }
 
