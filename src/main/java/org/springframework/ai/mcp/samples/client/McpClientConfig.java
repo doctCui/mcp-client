@@ -28,71 +28,99 @@ import java.util.List;
 public class McpClientConfig {
 
 
+    // @Bean
+    // public McpSyncClient amapMcpSyncClient() {
+    //     HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
+    //     httpClientBuilder.connectTimeout(Duration.ofSeconds(5));
+    //     HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
+    // //    requestBuilder.header("Authorization","Bearer sk-1281a468bfd44334992188e315fe102c");
+    //     HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder("https://mcp.amap.com")
+    //             .requestBuilder(requestBuilder)
+    //             .sseEndpoint("/sse?key=ca50b9c86c4bfbbc41855d9116a488cd")
+    //             .clientBuilder(httpClientBuilder).build();
+
+    //     McpSyncClient mcpSyncClient = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(30)).build();
+    //     mcpSyncClient.initialize();
+    //     return mcpSyncClient;
+    // }
+
+//     @Bean
+//     public McpSyncClient railwayMcpSyncClient() {
+//         HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
+//         httpClientBuilder.connectTimeout(Duration.ofSeconds(30));
+//         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
+// //        requestBuilder.header("Authorization","Bearer sk-1281a468bfd44334992188e315fe102c");
+//         HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder("https://mcp.api-inference.modelscope.net/e856b50679a44b/")
+//                 .requestBuilder(requestBuilder)
+//                 .sseEndpoint("sse")
+//                 .clientBuilder(httpClientBuilder).build();
+
+//         McpSyncClient mcpSyncClient = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(30)).build();
+//         mcpSyncClient.initialize();
+//         return mcpSyncClient;
+//     }
+
+
+    // @Bean
+    // public List<SyncMcpToolCallback> amapToolCallbacks(McpSyncClient amapMcpSyncClient) {
+    //     List<SyncMcpToolCallback> list = amapMcpSyncClient
+    //             .listTools()
+    //             .tools()
+    //             .stream()
+    //             .map(tool -> new SyncMcpToolCallback(amapMcpSyncClient, tool))
+    //             .toList();
+    //     return list;
+    // }
+
+    // @Bean
+    // public List<SyncMcpToolCallback> railwayToolCallbacks(McpSyncClient railwayMcpSyncClient) {
+    //     List<SyncMcpToolCallback> list = railwayMcpSyncClient
+    //             .listTools()
+    //             .tools()
+    //             .stream()
+    //             .map(tool -> new SyncMcpToolCallback(railwayMcpSyncClient, tool))
+    //             .toList();
+    //     return list;
+    // }
+
     @Bean
-    public McpSyncClient amapMcpSyncClient() {
+    public McpSyncClient getMcpSyncClient() {
         HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
         httpClientBuilder.connectTimeout(Duration.ofSeconds(5));
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
-//        requestBuilder.header("Authorization","Bearer sk-1281a468bfd44334992188e315fe102c");
-        HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder("https://mcp.amap.com")
+        requestBuilder.header("Authorization","Bearer secret123");
+        HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder("http://localhost:8080")
                 .requestBuilder(requestBuilder)
-                .sseEndpoint("/sse?key=ca50b9c86c4bfbbc41855d9116a488cd")
+                .sseEndpoint("/weather/mcp/sse")
                 .clientBuilder(httpClientBuilder).build();
 
-        McpSyncClient mcpSyncClient = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(30)).build();
-        mcpSyncClient.initialize();
-        return mcpSyncClient;
-    }
-
-    @Bean
-    public McpSyncClient railwayMcpSyncClient() {
-        HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
-        httpClientBuilder.connectTimeout(Duration.ofSeconds(30));
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
-//        requestBuilder.header("Authorization","Bearer sk-1281a468bfd44334992188e315fe102c");
-        HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder("https://mcp.api-inference.modelscope.net/e856b50679a44b/")
-                .requestBuilder(requestBuilder)
-                .sseEndpoint("sse")
-                .clientBuilder(httpClientBuilder).build();
-
-        McpSyncClient mcpSyncClient = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(30)).build();
+        McpSyncClient mcpSyncClient = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(10)).build();
         mcpSyncClient.initialize();
         return mcpSyncClient;
     }
 
 
     @Bean
-    public List<SyncMcpToolCallback> amapToolCallbacks(McpSyncClient amapMcpSyncClient) {
-        List<SyncMcpToolCallback> list = amapMcpSyncClient
+    public List<SyncMcpToolCallback> getSyncMcpToolCallback(McpSyncClient mcpSyncClient) {
+        List<SyncMcpToolCallback> list = mcpSyncClient
                 .listTools()
                 .tools()
                 .stream()
-                .map(tool -> new SyncMcpToolCallback(amapMcpSyncClient, tool))
-                .toList();
-        return list;
-    }
-
-    @Bean
-    public List<SyncMcpToolCallback> railwayToolCallbacks(McpSyncClient railwayMcpSyncClient) {
-        List<SyncMcpToolCallback> list = railwayMcpSyncClient
-                .listTools()
-                .tools()
-                .stream()
-                .map(tool -> new SyncMcpToolCallback(railwayMcpSyncClient, tool))
+                .map(tool -> new SyncMcpToolCallback(mcpSyncClient, tool))
                 .toList();
         return list;
     }
 
 //    @Bean
 //    public String systemPrompt(McpSyncClient client){
-////        Map<String, Object> arguments = new HashMap<>();
-////        arguments.put("user","张三");
-////        McpSchema.GetPromptRequest getPromptRequest = new McpSchema.GetPromptRequest("weather",arguments);
-////        McpSchema.GetPromptResult prompt = client.getPrompt(getPromptRequest);
-////        List<McpSchema.PromptMessage> messages = prompt.messages();
-////        McpSchema.PromptMessage promptMessage = messages.get(0);
-////        McpSchema.Content content = promptMessage.content();
-//        return "这是一个地图规划MCP";
+//        Map<String, Object> arguments = new HashMap<>();
+//        arguments.put("user","张三");
+//        McpSchema.GetPromptRequest getPromptRequest = new McpSchema.GetPromptRequest("weather",arguments);
+//        McpSchema.GetPromptResult prompt = client.getPrompt(getPromptRequest);
+//        List<McpSchema.PromptMessage> messages = prompt.messages();
+//        McpSchema.PromptMessage promptMessage = messages.get(0);
+//        McpSchema.Content content = promptMessage.content();
+//     //    return "这是一个地图规划MCP";
 //    }
 
     // 使用显式的内存仓库（InMemoryChatMemoryRepository）和窗口记忆
