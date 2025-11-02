@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 聊天助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .user-message {
+            background: #667eea;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .ai-message {
+            background: #f1f3f4;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+
+        .chat-input {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #eee;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input input:focus {
+            border-color: #667eea;
+        }
+
+        .chat-input button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .chat-input button:hover {
+            transform: translateY(-2px);
+        }
+
+        .chat-input button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Route cards */
+        .routes-wrapper { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+        .route-card { background: #ffffff; border: 1px solid #eee; border-radius: 12px; padding: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+        .route-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .route-title { font-weight: 600; color: #333; }
+        .route-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip { background: #f3f4f6; color: #374151; border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+        .steps { margin-top: 10px; border-top: 1px dashed #e5e7eb; padding-top: 10px; display: none; }
+        .step { display: flex; gap: 8px; margin: 6px 0; color: #374151; }
+        .step-index { width: 22px; height: 22px; border-radius: 50%; background: #667eea; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: 0 0 auto; }
+        .toggle-btn { background: transparent; border: none; color: #667eea; cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+        .toggle-btn:hover { background: #eef2ff; }
+
+        /* Train cards */
+        .train-wrapper { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+        .train-card { background: #ffffff; border: 1px solid #eee; border-radius: 12px; padding: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+        .train-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .train-title { display:flex; align-items:center; gap:10px; font-weight: 600; color: #111827; }
+        .train-badge { background:#eef2ff; color:#3730a3; border-radius:8px; padding:4px 8px; font-weight:600; font-size:12px; }
+        .train-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+        .time { font-weight:600; color:#111827; }
+        .station { color:#6b7280; }
+        .duration-chip { background:#f3f4f6; color:#374151; border-radius:999px; padding:4px 10px; font-size:12px; }
+        .seat-grid { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+        .seat-chip { border-radius:10px; padding:6px 10px; font-size:12px; border:1px solid #e5e7eb; display:inline-flex; gap:6px; align-items:center; }
+        .seat-chip .label { font-weight:600; color:#374151; }
+        .seat-chip .price { color:#6b7280; }
+        .seat-chip .avail { font-weight:600; }
+        .avail-yes { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
+        .avail-wait { color:#92400e; background:#fffbeb; border-color:#fcd34d; }
+        .avail-no { color:#6b7280; background:#f3f4f6; border-color:#e5e7eb; }
+        .avail-unknown { color:#1f2937; background:#f9fafb; border-color:#e5e7eb; }
+
+        /* Amap step type chips */
+        .type-chip { border-radius:999px; padding:2px 8px; font-size:12px; color:#fff; }
+        .type-walk { background:#059669; }
+        .type-metro { background:#2563eb; }
+        .type-bus { background:#d97706; }
+        .type-transfer { background:#6b7280; }
+
+        .loading {
+            display: none;
+            align-self: flex-start;
+            padding: 15px 20px;
+            background: #f1f3f4;
+            border-radius: 20px;
+            border-bottom-left-radius: 5px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            🤖 AI 聊天助手
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai-message">
+                你好！我是 AI 助手，有什么可以帮助你的吗？
+            </div>
+        </div>
+        <div class="loading" id="loading">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+        <div class="chat-input">
+            <select id="mcpSelect" style="border:2px solid #eee;border-radius:12px;padding:10px 12px;background:#fff;">
+                <option value="amap">高德地图</option>
+                <option value="railway">12306 火车票</option>
+            </select>
+            <input type="text" id="messageInput" placeholder="输入你的消息..." maxlength="1000">
+            <button id="sendButton" onclick="sendMessage()">发送</button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const loading = document.getElementById('loading');
+        const mcpSelect = document.getElementById('mcpSelect');
+        const sessionKey = 'ai_session_id';
+        function getSessionId() {
+            let id = localStorage.getItem(sessionKey);
+            if (!id) {
+                id = 's_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+                localStorage.setItem(sessionKey, id);
+            }
+            return id;
+        }
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function renderRoutesCard(text) {
+            // 将自由文本简单解析为方案块（按“### 方案”分段）
+            const parts = (text || '').split(/\n\s*###\s*/).filter(Boolean);
+            if (parts.length === 0) return null;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'routes-wrapper';
+
+            // 第一段可能包含总引言，跳过，逐个渲染方案
+            parts.forEach((blk) => {
+                const lines = blk.split('\n').filter(l => l.trim().length > 0);
+                if (lines.length === 0) return;
+
+                const titleLine = lines[0].trim();
+                const detailLines = lines.slice(1);
+
+                const card = document.createElement('div');
+                card.className = 'route-card';
+
+                const header = document.createElement('div');
+                header.className = 'route-header';
+                const title = document.createElement('div');
+                title.className = 'route-title';
+                title.textContent = titleLine.replace(/^方案\S*：?/, m => m.endsWith('：') ? m : m + ' ');
+
+                const meta = document.createElement('div');
+                meta.className = 'route-meta';
+                const duration = (text.match(/总行程时间：?约?(\d+)分钟/) || [])[1];
+                const walk = (text.match(/步行距离：?约?(\d+)米/) || [])[1];
+                if (duration) {
+                    const chip = document.createElement('span');
+                    chip.className = 'chip';
+                    chip.textContent = `约 ${duration} 分钟`;
+                    meta.appendChild(chip);
+                }
+                if (walk) {
+                    const chip = document.createElement('span');
+                    chip.className = 'chip';
+                    chip.textContent = `步行约 ${walk} 米`;
+                    meta.appendChild(chip);
+                }
+
+                const toggle = document.createElement('button');
+                toggle.className = 'toggle-btn';
+                toggle.textContent = '展开详情';
+
+                header.appendChild(title);
+                header.appendChild(meta);
+                header.appendChild(toggle);
+
+                const steps = document.createElement('div');
+                steps.className = 'steps';
+
+                // 把条目行（以数字. 或 项目符号 开头）作为步骤
+                const stepLines = detailLines.filter(l => /^\s*\d+\.|\s*[-•]/.test(l));
+                stepLines.forEach((l, idx) => {
+                    const row = document.createElement('div');
+                    row.className = 'step';
+                    const badge = document.createElement('span');
+                    badge.className = 'step-index';
+                    badge.textContent = String(idx + 1);
+                    const txt = document.createElement('div');
+                    txt.textContent = l.replace(/^\s*\d+\.|\s*[-•]/, '').trim();
+                    row.appendChild(badge);
+                    row.appendChild(txt);
+                    steps.appendChild(row);
+                });
+
+                toggle.addEventListener('click', () => {
+                    const isShown = steps.style.display === 'block';
+                    steps.style.display = isShown ? 'none' : 'block';
+                    toggle.textContent = isShown ? '展开详情' : '收起详情';
+                });
+
+                card.appendChild(header);
+                if (stepLines.length > 0) card.appendChild(steps);
+                wrapper.appendChild(card);
+            });
+
+            return wrapper;
+        }
+
+        function renderStructuredRoutes(data) {
+            try {
+                const { origin, destination, routes } = data || {};
+                if (!Array.isArray(routes) || routes.length === 0) return null;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'routes-wrapper';
+
+                if (origin || destination) {
+                    const headerCard = document.createElement('div');
+                    headerCard.className = 'route-card';
+                    const hd = document.createElement('div');
+                    hd.className = 'route-header';
+                    const title = document.createElement('div');
+                    title.className = 'route-title';
+                    title.textContent = `${origin || '起点'} → ${destination || '终点'}`;
+                    hd.appendChild(title);
+                    headerCard.appendChild(hd);
+                    wrapper.appendChild(headerCard);
+                }
+
+                routes.forEach((r, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'route-card';
+
+                    const header = document.createElement('div');
+                    header.className = 'route-header';
+                    const title = document.createElement('div');
+                    title.className = 'route-title';
+                    title.textContent = r.name || `方案 ${idx + 1}`;
+
+                    const meta = document.createElement('div');
+                    meta.className = 'route-meta';
+                    if (typeof r.totalDurationMinutes === 'number') {
+                        const chip = document.createElement('span');
+                        chip.className = 'chip';
+                        chip.textContent = `约 ${r.totalDurationMinutes} 分钟`;
+                        meta.appendChild(chip);
+                    }
+                    if (typeof r.totalWalkMeters === 'number') {
+                        const chip = document.createElement('span');
+                        chip.className = 'chip';
+                        chip.textContent = `步行约 ${r.totalWalkMeters} 米`;
+                        meta.appendChild(chip);
+                    }
+
+                    const toggle = document.createElement('button');
+                    toggle.className = 'toggle-btn';
+                    toggle.textContent = '展开详情';
+
+                    header.appendChild(title);
+                    header.appendChild(meta);
+                    header.appendChild(toggle);
+
+                    const steps = document.createElement('div');
+                    steps.className = 'steps';
+
+                    const flatSteps = Array.isArray(r.steps) ? r.steps : [];
+                    flatSteps.forEach((s, i) => {
+                        const row = document.createElement('div');
+                        row.className = 'step';
+                        const badge = document.createElement('span');
+                        badge.className = 'step-index';
+                        badge.textContent = String(i + 1);
+                        const txt = document.createElement('div');
+
+                        const parts = [];
+                        // 主类型 + 线路
+                        if (s.type) {
+                            const chip = document.createElement('span');
+                            chip.className = `type-chip ${s.type === 'walk' ? 'type-walk' : s.type === 'metro' ? 'type-metro' : s.type === 'bus' ? 'type-bus' : 'type-transfer'}`;
+                            chip.textContent = s.type === 'walk' ? '步行' : s.type === 'metro' ? '地铁' : s.type === 'bus' ? '公交' : '换乘';
+                            parts.push(''); // 占位，chip 直接插入 DOM
+                            txt.appendChild(chip);
+                            txt.appendChild(document.createTextNode(' '));
+                        }
+                        if (s.line) parts.push(s.line);
+                        if (s.from && s.to) parts.push(`${s.from} → ${s.to}`);
+                        if (typeof s.stops === 'number') parts.push(`${s.stops} 站`);
+                        if (typeof s.durationMinutes === 'number') parts.push(`约 ${s.durationMinutes} 分钟`);
+                        if (typeof s.distanceMeters === 'number') parts.push(`${s.distanceMeters} 米`);
+                        txt.appendChild(document.createTextNode(parts.filter(Boolean).join(' · ') || '步骤'));
+
+                        row.appendChild(badge);
+                        row.appendChild(txt);
+                        steps.appendChild(row);
+
+                        // 嵌套步行明细
+                        if (Array.isArray(s.steps) && s.steps.length > 0) {
+                            s.steps.forEach((sub) => {
+                                const subRow = document.createElement('div');
+                                subRow.className = 'step';
+                                const dot = document.createElement('span');
+                                dot.className = 'step-index';
+                                dot.textContent = '·';
+                                const subTxt = document.createElement('div');
+                                const subParts = [];
+                                if (sub.instruction) subParts.push(sub.instruction);
+                                if (typeof sub.durationMinutes === 'number') subParts.push(`约 ${sub.durationMinutes} 分钟`);
+                                if (typeof sub.distanceMeters === 'number') subParts.push(`${sub.distanceMeters} 米`);
+                                subTxt.textContent = subParts.join(' · ');
+                                subRow.appendChild(dot);
+                                subRow.appendChild(subTxt);
+                                steps.appendChild(subRow);
+                            });
+                        }
+                    });
+
+                    toggle.addEventListener('click', () => {
+                        const isShown = steps.style.display === 'block';
+                        steps.style.display = isShown ? 'none' : 'block';
+                        toggle.textContent = isShown ? '展开详情' : '收起详情';
+                    });
+
+                    card.appendChild(header);
+                    if (flatSteps.length > 0) card.appendChild(steps);
+                    wrapper.appendChild(card);
+                });
+
+                return wrapper;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function formatMinutes(mins) {
+            if (typeof mins !== 'number' || mins < 0) return '';
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return h > 0 ? `${h}小时${m}分` : `${m}分钟`;
+        }
+
+        function renderRailwayTrains(data) {
+            try {
+                const { date, origin, destination, trains } = data || {};
+                if (!Array.isArray(trains) || trains.length === 0) return null;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'train-wrapper';
+
+                // 顶部概览
+                const headerCard = document.createElement('div');
+                headerCard.className = 'train-card';
+                const hd = document.createElement('div');
+                hd.className = 'train-header';
+                const title = document.createElement('div');
+                title.className = 'train-title';
+                title.textContent = `${origin || '出发地'} → ${destination || '目的地'}`;
+                const dateChip = document.createElement('span');
+                dateChip.className = 'duration-chip';
+                dateChip.textContent = date || '日期未提供';
+                hd.appendChild(title);
+                hd.appendChild(dateChip);
+                headerCard.appendChild(hd);
+                wrapper.appendChild(headerCard);
+
+                // 分组：早(00:00-10:59) / 中(11:00-16:59) / 晚(17:00-23:59)，每组最多3条
+                const toMinutes = (hhmm) => {
+                    const m = /^(\d{2}):(\d{2})$/.exec(hhmm || '');
+                    if (!m) return -1;
+                    return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+                };
+                const groups = { morning: [], noon: [], evening: [] };
+                trains.forEach(t => {
+                    const dep = toMinutes(t.departureTime);
+                    if (dep >= 0 && dep <= 10 * 60 + 59) groups.morning.push(t);
+                    else if (dep >= 11 * 60 && dep <= 16 * 60 + 59) groups.noon.push(t);
+                    else if (dep >= 17 * 60 && dep <= 23 * 60 + 59) groups.evening.push(t);
+                    else groups.noon.push(t);
+                });
+                const sortByDep = arr => arr.sort((a, b) => toMinutes(a.departureTime) - toMinutes(b.departureTime));
+                sortByDep(groups.morning); sortByDep(groups.noon); sortByDep(groups.evening);
+                const cap3 = arr => arr.slice(0, 3);
+                groups.morning = cap3(groups.morning);
+                groups.noon = cap3(groups.noon);
+                groups.evening = cap3(groups.evening);
+
+                const renderGroup = (titleText, arr) => {
+                    if (!arr || arr.length === 0) return;
+                    const section = document.createElement('div');
+                    const secHd = document.createElement('div');
+                    secHd.className = 'route-header';
+                    const secTitle = document.createElement('div');
+                    secTitle.className = 'route-title';
+                    secTitle.textContent = titleText;
+                    secHd.appendChild(secTitle);
+                    section.appendChild(secHd);
+
+                    arr.forEach((t) => {
+                        const card = document.createElement('div');
+                        card.className = 'train-card';
+
+                        const header = document.createElement('div');
+                        header.className = 'train-header';
+                        const title = document.createElement('div');
+                        title.className = 'train-title';
+                        const badge = document.createElement('span');
+                        badge.className = 'train-badge';
+                        badge.textContent = t.trainNumber || '车次';
+                        const route = document.createElement('span');
+                        route.className = 'station';
+                        route.textContent = `${t.fromStation || ''} → ${t.toStation || ''}`;
+                        title.appendChild(badge);
+                        title.appendChild(route);
+
+                        const meta = document.createElement('div');
+                        meta.className = 'train-meta';
+                        const timeSpan = document.createElement('span');
+                        timeSpan.className = 'time';
+                        timeSpan.textContent = `${t.departureTime || ''} - ${t.arrivalTime || ''}`;
+                        const durChip = document.createElement('span');
+                        durChip.className = 'duration-chip';
+                        durChip.textContent = formatMinutes(t.durationMinutes);
+                        meta.appendChild(timeSpan);
+                        meta.appendChild(durChip);
+
+                        header.appendChild(title);
+                        header.appendChild(meta);
+
+                        const seats = document.createElement('div');
+                        seats.className = 'seat-grid';
+                        const seatTypes = Array.isArray(t.seatTypes) ? t.seatTypes : [];
+                        seatTypes.forEach((s) => {
+                            const chip = document.createElement('span');
+                            chip.className = 'seat-chip';
+                            const label = document.createElement('span');
+                            label.className = 'label';
+                            label.textContent = s.type || '席别';
+                            const price = document.createElement('span');
+                            price.className = 'price';
+                            price.textContent = typeof s.priceCNY === 'number' ? `${s.priceCNY} 元` : '';
+                            const avail = document.createElement('span');
+                            avail.className = 'avail';
+                            const a = (s.availability || '').trim();
+                            avail.textContent = a || '未知';
+                            const cls = a === '有' ? 'avail-yes' : a === '候补' ? 'avail-wait' : a === '无' ? 'avail-no' : 'avail-unknown';
+                            chip.classList.add(cls);
+                            chip.appendChild(label);
+                            if (price.textContent) chip.appendChild(price);
+                            chip.appendChild(avail);
+                            seats.appendChild(chip);
+                        });
+
+                        card.appendChild(header);
+                        if (seatTypes.length > 0) card.appendChild(seats);
+                        section.appendChild(card);
+                    });
+
+                    wrapper.appendChild(section);
+                };
+
+                renderGroup('早间推荐', groups.morning);
+                renderGroup('白天推荐', groups.noon);
+                renderGroup('晚间推荐', groups.evening);
+
+                return wrapper;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function showLoading() {
+            loading.style.display = 'block';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideLoading() {
+            loading.style.display = 'none';
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // 禁用输入和按钮
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+
+            // 添加用户消息
+            addMessage(message, true);
+            messageInput.value = '';
+
+            // 显示加载状态
+            showLoading();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message, mcp: mcpSelect.value, sessionId: getSessionId() })
+                });
+
+                if (!response.ok) {
+                    throw new Error('网络请求失败');
+                }
+
+                const data = await response.json();
+                // 优先根据 mcp 分流渲染
+                if (data && data.mcp === 'railway' && data.data) {
+                    const node = renderRailwayTrains(data.data);
+                    if (node) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'message ai-message';
+                        wrapper.appendChild(node);
+                        chatMessages.appendChild(wrapper);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        return;
+                    }
+                } else if (data && data.data) {
+                    const node = renderStructuredRoutes(data.data);
+                    if (node) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'message ai-message';
+                        wrapper.appendChild(node);
+                        chatMessages.appendChild(wrapper);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        return;
+                    }
+                }
+
+                const text = data.response || data.raw || JSON.stringify(data);
+                const card = renderRoutesCard(text);
+                if (card) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'message ai-message';
+                    wrapper.appendChild(card);
+                    chatMessages.appendChild(wrapper);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                } else {
+                    addMessage(text);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('抱歉，发生了错误，请稍后重试。');
+            } finally {
+                hideLoading();
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // 回车发送消息
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 自动聚焦到输入框
+        messageInput.focus();
+    </script>
+</body>
+</html> 
